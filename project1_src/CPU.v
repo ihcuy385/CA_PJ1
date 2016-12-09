@@ -105,12 +105,12 @@ Data_Memory Data_Memory(
     .Memory_write_i (Stage3.Memory_write_o_3),
     .Memory_read_i  (Stage3.Memory_read_o_3),
     .write_data_i   (mux7_output),
-    .read_data_o    (mux5.data1_i)
+    .read_data_o    (Stage4.Data1_i)//(mux5.data1_i)
 );
 
 MUX32 mux5(
-    .data1_i(Data_Memory.read_data_o),//0
-    .data2_i(ALU_output),//1
+    .data1_i(Stage4.Data1_o),//0
+    .data2_i(Stage4.Data2_o),//1
     .select_i(Stage4.MemtoReg_o_4),
     .data_o(mux5_output)
 );
@@ -131,12 +131,12 @@ MUX32v3 mux7(
     .data_o(mux7_output)
 );
 
-Forwarding_Unit(
-    .regdst_i_WB(mux8_output),
-    .regdst_i_M(mux8_output),
-    .RSaddr_i(inst[25:21]),
-    .RTaddr_i(inst[20:16]),
-    .Stage4_Regwrite_i(Stage4_RegWrite_output),
+Forwarding_Unit Forwarding_Unit(//change for pipeline
+    .Regdst_i_WB(Stage4.RDaddr_o),
+    .Regdst_i_M(Stage3_RDaddr_output),
+    .RSaddr_i(Stage2_RSaddr_output),
+    .RTaddr_i(Stage2_RTaddr_output),
+    .Stage4_Regwrite_i(Stage4.RegWrite_o_4),
     .Stage3_RegWrite_i(Stage3_RegWrite_output),
     .mux7_o(mux7.select_i),
     .mux6_o(mux6.select_i)
@@ -145,11 +145,18 @@ Forwarding_Unit(
 Stage4(
     //WB
     .RegWrite_i_4(Stage3_RegWrite_output),
-    .RegWrite_o_4(Stage4_RegWrite_output),
+    .RegWrite_o_4(Forwarding_Unit.Stage4_Regwrite_i),
     .MemtoReg_i_4(Stage3.MemtoReg_o_3),
     .MemtoReg_o_4(mux5.select_i),
     //clk
-    .clk_i(clk_i)
+    .clk_i(clk_i),
+    //other
+    .Data1_i(Data_memory.read_data_o),
+    .Data2_i(Stage3.Data1_o),
+    .RDaddr_i(Stage3.RDaddr_o),
+    .Data1_o(mux5.data1_i),
+    .Data2_o(mux5.data2_i),
+    .RDaddr_o(Forwarding_Unit.Regdst_i_WB)
 );
 
 Stage3(
@@ -164,7 +171,12 @@ Stage3(
     .Memory_read_i_3(Stage3.Memory_read_o_2),
     .Memory_read_o_3(Data_Memory.Memory_read_i).
     //clk
-    .clk_i(clk_i)
+    .clk_i(clk_i),
+    //other
+    .Data1_i(ALU_ouput),
+    .Data1_o(Stage4.Data2_i),
+    .RDaddr_i(),
+    .RDaddr_o(Stage4.RDaddr_i)
 );
 
 Stage2(
